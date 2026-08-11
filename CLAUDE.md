@@ -1,0 +1,61 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project
+
+Money Manager — personal finance tracking app (like Money Manager), written in Rust. Target platform: Android (min SDK 24 / Android 7 first), with a native iOS UI planned later on top of the same Rust core.
+
+## Current state
+
+Early implementation stage, starting with the auth slice. Single crate (no workspace split yet), modules under `src/domain` and `src/infrastructure` (module intentionally named `infrastructure`, not `infra` — see note below).
+
+Done so far (domain layer, all with unit tests):
+- `domain::email::Email` — validated value object
+- `domain::user::{User, UserId, PasswordHash}` — Always-Valid entity, `User::register(id, email, password_hash)`
+- `domain::device::{Device, DeviceId, RefreshTokenHash}` — Always-Valid entity representing both an auth session and a sync client (see architecture.md); `Device::register(id, user_id, name, refresh_token_hash)`, `revoke()`
+- `infrastructure::crypto` — argon2 `hash_password`/`verify_password`
+
+Next planned step (not started): a `UserRepository` port (trait) in `domain`, with a fake in-memory impl for tests, followed by an application-level `RegisterUser` command that composes `User::register` + `crypto::hash_password` + the repository. No Android/iOS project, no server, no DB wiring yet.
+
+Full rationale for these decisions lives in two docs in the repo root — read them before making architectural suggestions:
+- `stack.md` — tech stack choices
+- `architecture.md` — architecture patterns and how to apply them, written as a learning reference (the author is new to these practices and is deliberately building experience with them)
+
+## How to work with the author
+
+The author is writing all the code themselves and wants Claude for advice, review, and explanation — not for autonomous implementation. **Always ask before making changes or taking action; do not just start writing/editing code or files.** This applies to every step, not just the first one.
+
+## Stack (see stack.md for full detail)
+
+- Architecture: shared Rust core + native UI per platform (UniFFI bindings), not a cross-platform Rust GUI framework
+- Android UI: Kotlin + Jetpack Compose, min SDK 24
+- iOS UI (later): Swift/SwiftUI, same Rust core
+- DB: rusqlite (sync SQLite)
+- Money: stored as `i64` minor units (cents/kopecks), no floats
+- FFI: uniffi, proc-macro style (`#[uniffi::export]`), no `.udl` files
+- Android build: cargo-ndk invoked via script (not the gradle plugin), so the build step stays visible
+- Sync: own Rust backend server (HTTPS), not cloud-storage-based or P2P
+- Conflict resolution: last-write-wins by server-assigned `updated_at`; soft deletes via `deleted_at` tombstones; incremental sync via a monotonic `sync_version` cursor per client
+- Open/not yet decided: Cargo workspace crate layout, DB schema, server web framework (Axum vs Actix), authentication approach
+
+## Architecture (see architecture.md for full detail with examples)
+
+Hexagonal/clean architecture combined with DDD and Vladimir Khorikov's practices:
+
+- Planned crate split: `domain` (pure business logic, no IO) / `infrastructure` (rusqlite repositories, HTTP client) / `ffi` (thin UniFFI adapter) / `server` (Axum API). Dependencies point inward only — `domain` depends on nothing else.
+- Always-Valid Domain Model: entities have private fields and fallible smart constructors (`fn new(...) -> Result<Self, DomainError>`); invalid state must be unrepresentable, not just checked elsewhere.
+- Functional Core, Imperative Shell: `domain` contains pure functions only; all side effects (DB, network, time) live in `infrastructure`/`ffi`/`server`.
+- CQRS-lite: commands go through the domain model with validation; read-only queries/reports (e.g. spending by category) go straight to SQL projections, bypassing domain objects.
+- `Result<T, DomainError>` for expected business errors; `panic!`/`unwrap` only for actual invariant violations (bugs).
+- Sync uses the outbox pattern: local writes go into the entity table and an `outbox` table in the same transaction; a background worker drains the outbox when online; inbound changes are applied by a separate handler that resolves conflicts per the LWW rule above.
+- Test priority: most tests on `domain` (cheap, no mocks needed since it's pure), fewer integration tests on `infrastructure`, minimal tests on `ffi`/`server` adapters.
+
+Since these practices are new to the author: introduce them incrementally (start with one Always-Valid entity, keep domain/infrastructure split at module level before splitting into crates, add CQRS-lite only once a real report/aggregation exists) rather than applying the full pattern set upfront. See the "Как осваивать это практически" section in `architecture.md`. Note: the module is named `infrastructure` (not the shorter `infra`) per the author's preference — the error type inside it is still `InfraError`.
+
+## Commands
+
+No custom build/test tooling yet — standard cargo commands apply to the current scaffold:
+- `cargo build`
+- `cargo run`
+- `cargo test`

@@ -1,0 +1,8 @@
+[package]
+name = "finances"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+thiserror = "1"
+argon2 = { version = "0.5", features = ["std"] }
