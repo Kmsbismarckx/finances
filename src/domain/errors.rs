@@ -6,4 +6,6 @@ pub enum DomainError {
     InvalidEmail,
     #[error("device name cannot be empty")]
     EmptyDeviceName,
+    #[error("email is already registered")]
+    EmailAlreadyRegistered,
 }
