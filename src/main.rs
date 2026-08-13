@@ -2,11 +2,10 @@ use std::sync::{Arc, Mutex};
 
 use axum::{Router, routing::post};
 
-use crate::{infrastructure::user_repository::SqliteUserRepository, server::AppState};
-
-mod domain;
-mod infrastructure;
-mod server;
+use finances::{
+    infrastructure::{self, user_repository::SqliteUserRepository},
+    server::{self, AppState},
+};
 
 #[tokio::main]
 async fn main() {
