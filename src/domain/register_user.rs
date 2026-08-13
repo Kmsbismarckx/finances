@@ -13,13 +13,13 @@ pub fn register_user(
     email: Email,
     plain_password: &str,
 ) -> Result<User, DomainError> {
-    if repo.find_by_email(&email).is_some() {
+    if repo.find_by_email(&email)?.is_some() {
         return Err(DomainError::EmailAlreadyRegistered);
     }
 
     let password_hash = hasher.hash(plain_password);
     let user = User::register(id, email, password_hash)?;
-    repo.save(user.clone());
+    repo.save(user.clone())?;
 
     Ok(user)
 }
@@ -45,7 +45,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(user.email(), &email);
-        assert!(repo.find_by_email(&email).is_some());
+        assert!(repo.find_by_email(&email).unwrap().is_some());
     }
 
     #[test]

@@ -50,6 +50,20 @@ impl User {
         })
     }
 
+    pub fn from_persisted(
+        id: UserId,
+        email: Email,
+        password_hash: PasswordHash,
+        email_verified: bool,
+    ) -> Self {
+        User {
+            id,
+            email,
+            password_hash,
+            email_verified,
+        }
+    }
+
     pub fn id(&self) -> &UserId {
         &self.id
     }

@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 thiserror = "1"
 argon2 = { version = "0.5", features = ["std"] }
+rusqlite = { version = "0.40.2", features = ["bundled"] }

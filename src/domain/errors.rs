@@ -8,4 +8,6 @@ pub enum DomainError {
     EmptyDeviceName,
     #[error("email is already registered")]
     EmailAlreadyRegistered,
+    #[error("repository error: {0}")]
+    Repository(#[from] crate::domain::user_repository::RepositoryError),
 }

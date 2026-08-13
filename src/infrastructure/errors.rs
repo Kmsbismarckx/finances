@@ -4,4 +4,6 @@ use thiserror::Error;
 pub enum InfraError {
     #[error("password hashing failed")]
     Hashing,
+    #[error("database error: {0}")]
+    Database(String),
 }
