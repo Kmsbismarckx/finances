@@ -27,11 +27,21 @@ Done so far, all with unit tests (integration test for the SQLite repo):
 
 This is a full working vertical slice (HTTP → domain → SQLite) for registration only.
 
+Android/UniFFI walking skeleton is also done and verified on an emulator:
+- Crate is now library+binary: `[lib]` with `crate-type = ["cdylib", "rlib"]`, `src/lib.rs` declares the modules (`main.rs` imports from the `finances` lib crate instead of declaring modules itself)
+- `src/ffi.rs` — `#[uniffi::export] fn greet(name: String) -> String`, first (throwaway) FFI function, no real business logic yet
+- `src/bin/uniffi-bindgen.rs` — thin binary (`uniffi::uniffi_bindgen_main()`) used to generate Kotlin bindings; needs the `cli` feature on the `uniffi` dependency
+- Android project lives at `android/` inside this repo (Kotlin + Jetpack Compose, min SDK 24, package `com.bismarckx.rationem`)
+- Build flow (manual for now, not yet scripted): `cargo ndk -o android/app/src/main/jniLibs -t armeabi-v7a -t arm64-v8a -t x86_64 build`, then `cargo run --bin uniffi-bindgen generate --library target/aarch64-linux-android/debug/libfinances.so --language kotlin --out-dir android/app/src/main/java`
+- Kotlin bindings use JNA (`com.sun.jna.Library`) under the hood — added `net.java.dev.jna:jna:5.15.0@aar` to `android/app/build.gradle.kts`
+- `jniLibs` and generated `uniffi/` Kotlin sources are gitignored (build outputs, regenerated via the commands above, not committed)
+- Confirmed working end-to-end: `MainActivity.kt`'s `Greeting` composable calls `greet(name)`, emulator shows the Rust-generated string
+
 Next step — not yet decided, ask the author which to do first:
 - `POST /auth/login` — needs `Device` wired into a repository + command, plus JWT access token + opaque refresh token issuance (see architecture design discussed earlier: refresh token rotation, per-device revocation)
-- or: pause the auth feature work and build the Android/UniFFI walking skeleton (cargo-ndk build script + minimal `#[uniffi::export]` + a Compose screen calling into Rust) — deliberately deferred earlier to finish the register vertical slice first
+- or: turn the manual cargo-ndk + uniffi-bindgen steps into a build script (per stack.md, a script not a gradle plugin), and/or start wiring real domain calls (e.g. register) through FFI instead of the throwaway `greet` function
 
-No Android/iOS project exists yet either way.
+No iOS project exists yet.
 
 Full rationale for these decisions lives in two docs in the repo root — read them before making architectural suggestions:
 - `stack.md` — tech stack choices
