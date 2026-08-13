@@ -10,13 +10,28 @@ Money Manager — personal finance tracking app (like Money Manager), written in
 
 Early implementation stage, starting with the auth slice. Single crate (no workspace split yet), modules under `src/domain` and `src/infrastructure` (module intentionally named `infrastructure`, not `infra` — see note below).
 
-Done so far (domain layer, all with unit tests):
+Done so far, all with unit tests (integration test for the SQLite repo):
 - `domain::email::Email` — validated value object
-- `domain::user::{User, UserId, PasswordHash}` — Always-Valid entity, `User::register(id, email, password_hash)`
-- `domain::device::{Device, DeviceId, RefreshTokenHash}` — Always-Valid entity representing both an auth session and a sync client (see architecture.md); `Device::register(id, user_id, name, refresh_token_hash)`, `revoke()`
+- `domain::user::{User, UserId, PasswordHash}` — Always-Valid entity, `User::register(id, email, password_hash)`; `User::from_persisted(...)` to rehydrate from storage without re-running register's business rules
+- `domain::device::{Device, DeviceId, RefreshTokenHash}` — Always-Valid entity representing both an auth session and a sync client (see architecture.md); `Device::register(id, user_id, name, refresh_token_hash)`, `revoke()` — not yet wired into any command or repository
+- `domain::user_repository::UserRepository` — port trait (`find_by_email`, `save`), fallible (`RepositoryError`, owned by `domain`, not `infrastructure`)
+- `domain::password_hasher::PasswordHasher` — port trait (`hash`)
+- `domain::register_user::register_user` — command composing the above: rejects duplicate email, hashes password, persists
+- `domain::fakes` (test-only, `#[cfg(test)]`) — `InMemoryUserRepository`, `FakePasswordHasher`
 - `infrastructure::crypto` — argon2 `hash_password`/`verify_password`
+- `infrastructure::password_hasher::Argon2PasswordHasher` — implements the `PasswordHasher` port
+- `infrastructure::db::open` — opens a SQLite connection and creates the `users` table if missing
+- `infrastructure::user_repository::SqliteUserRepository` — implements `UserRepository` via rusqlite
+- `server::auth::register` (Axum) — `POST /auth/register`, maps `DomainError` to HTTP status codes (400/409/500); verified working end-to-end with `curl` (201 on success, 409 on duplicate email)
+- `main.rs` runs the Axum server on `127.0.0.1:3000`, opens `finances.db` on startup
 
-Next planned step (not started): a `UserRepository` port (trait) in `domain`, with a fake in-memory impl for tests, followed by an application-level `RegisterUser` command that composes `User::register` + `crypto::hash_password` + the repository. No Android/iOS project, no server, no DB wiring yet.
+This is a full working vertical slice (HTTP → domain → SQLite) for registration only.
+
+Next step — not yet decided, ask the author which to do first:
+- `POST /auth/login` — needs `Device` wired into a repository + command, plus JWT access token + opaque refresh token issuance (see architecture design discussed earlier: refresh token rotation, per-device revocation)
+- or: pause the auth feature work and build the Android/UniFFI walking skeleton (cargo-ndk build script + minimal `#[uniffi::export]` + a Compose screen calling into Rust) — deliberately deferred earlier to finish the register vertical slice first
+
+No Android/iOS project exists yet either way.
 
 Full rationale for these decisions lives in two docs in the repo root — read them before making architectural suggestions:
 - `stack.md` — tech stack choices
