@@ -53,6 +53,10 @@ Hexagonal/clean architecture combined with DDD and Vladimir Khorikov's practices
 
 Since these practices are new to the author: introduce them incrementally (start with one Always-Valid entity, keep domain/infrastructure split at module level before splitting into crates, add CQRS-lite only once a real report/aggregation exists) rather than applying the full pattern set upfront. See the "Как осваивать это практически" section in `architecture.md`. Note: the module is named `infrastructure` (not the shorter `infra`) per the author's preference — the error type inside it is still `InfraError`.
 
+## Commit messages
+
+Follow the Angular commit message guidelines (`type(scope): summary`, lowercase summary with no trailing period, body as a bullet list explaining what/why) whenever asked to write a commit message.
+
 ## Commands
 
 No custom build/test tooling yet — standard cargo commands apply to the current scaffold:

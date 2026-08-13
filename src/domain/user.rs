@@ -28,7 +28,7 @@ impl UserId {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct User {
     id: UserId,
     email: Email,
