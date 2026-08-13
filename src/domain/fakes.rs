@@ -4,7 +4,7 @@ use crate::domain::{
     email::Email,
     password_hasher::PasswordHasher,
     user::{PasswordHash, User},
-    user_repository::UserRepository,
+    user_repository::{RepositoryError, UserRepository},
 };
 
 #[derive(Default)]
@@ -13,12 +13,13 @@ pub struct InMemoryUserRepository {
 }
 
 impl UserRepository for InMemoryUserRepository {
-    fn find_by_email(&self, email: &Email) -> Option<User> {
-        self.users.get(email.as_str()).cloned()
+    fn find_by_email(&self, email: &Email) -> Result<Option<User>, RepositoryError> {
+        Ok(self.users.get(email.as_str()).cloned())
     }
 
-    fn save(&mut self, user: User) {
+    fn save(&mut self, user: User) -> Result<(), RepositoryError> {
         self.users.insert(user.email().as_str().to_string(), user);
+        Ok(())
     }
 }
 
@@ -51,8 +52,8 @@ mod tests {
         .unwrap();
 
         let mut repo = InMemoryUserRepository::default();
-        repo.save(user);
+        repo.save(user).unwrap();
 
-        assert!(repo.find_by_email(&email).is_some());
+        assert!(repo.find_by_email(&email).unwrap().is_some());
     }
 }
