@@ -32,14 +32,14 @@ Android/UniFFI walking skeleton is also done and verified on an emulator:
 - `src/ffi.rs` — `#[uniffi::export] fn greet(name: String) -> String`, first (throwaway) FFI function, no real business logic yet
 - `src/bin/uniffi-bindgen.rs` — thin binary (`uniffi::uniffi_bindgen_main()`) used to generate Kotlin bindings; needs the `cli` feature on the `uniffi` dependency
 - Android project lives at `android/` inside this repo (Kotlin + Jetpack Compose, min SDK 24, package `com.bismarckx.rationem`)
-- Build flow (manual for now, not yet scripted): `cargo ndk -o android/app/src/main/jniLibs -t armeabi-v7a -t arm64-v8a -t x86_64 build`, then `cargo run --bin uniffi-bindgen generate --library target/aarch64-linux-android/debug/libfinances.so --language kotlin --out-dir android/app/src/main/java`
+- Build flow scripted: `./scripts/build-android.sh` (add `--release` for a release build) runs cargo-ndk then uniffi-bindgen; must be run from the repo root. After running it, rebuild/Run in Android Studio to pick up the new `.so`/Kotlin bindings.
 - Kotlin bindings use JNA (`com.sun.jna.Library`) under the hood — added `net.java.dev.jna:jna:5.15.0@aar` to `android/app/build.gradle.kts`
 - `jniLibs` and generated `uniffi/` Kotlin sources are gitignored (build outputs, regenerated via the commands above, not committed)
 - Confirmed working end-to-end: `MainActivity.kt`'s `Greeting` composable calls `greet(name)`, emulator shows the Rust-generated string
 
-Next step — not yet decided, ask the author which to do first:
-- `POST /auth/login` — needs `Device` wired into a repository + command, plus JWT access token + opaque refresh token issuance (see architecture design discussed earlier: refresh token rotation, per-device revocation)
-- or: turn the manual cargo-ndk + uniffi-bindgen steps into a build script (per stack.md, a script not a gradle plugin), and/or start wiring real domain calls (e.g. register) through FFI instead of the throwaway `greet` function
+Next step: `POST /auth/login` — needs `Device` wired into a repository + command, plus JWT access token + opaque refresh token issuance (see architecture design discussed earlier: refresh token rotation, per-device revocation).
+
+Note on FFI scope: wiring "real" domain calls through FFI (instead of the throwaway `greet`) is *not* the right next step for auth — `register`/`login` are server-side operations the Android app should call over HTTP (the whole point of having one server as the source of truth for accounts across devices), not via local FFI calls into `register_user`. FFI will matter once local, on-device domain logic exists (transactions/categories/accounts, written locally per the outbox pattern) — that hasn't been built yet.
 
 No iOS project exists yet.
 
